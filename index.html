@@ -1152,11 +1152,27 @@
     <div class="admin-section" id="fb-setup-section">
       <div class="admin-section-title">🔥 Firebase Database Setup</div>
       <div id="fb-status-connected" style="display:none;">
-        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);display:inline-block;"></span>
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);display:inline-block;flex-shrink:0;"></span>
           <span style="font-size:0.8rem;color:var(--emerald);">Connected to Firebase</span>
           <span id="fb-project-name" style="font-size:0.72rem;color:var(--text-dim);margin-left:auto;"></span>
         </div>
+
+        <!-- BAKE INTO FILE -->
+        <div style="background:rgba(232,184,75,0.07);border:1px solid rgba(232,184,75,0.25);border-radius:12px;padding:1rem;margin-bottom:0.75rem;">
+          <div style="font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">⚡ Make it permanent for all visitors</div>
+          <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.75rem;line-height:1.6;">
+            Right now the config is only saved in <em>this browser</em>. To make every visitor (incognito, mobile, etc.) auto-connect, open <code style="background:rgba(255,255,255,0.07);padding:0.1rem 0.4rem;border-radius:4px;">index.html</code> in a text editor and replace the line:<br>
+            <code style="background:rgba(255,255,255,0.07);padding:0.1rem 0.4rem;border-radius:4px;display:block;margin:0.4rem 0;color:var(--text-dim);">const FIREBASE_CONFIG = null;</code>
+            with the line below — then save &amp; push to GitHub.
+          </p>
+          <div style="position:relative;">
+            <textarea id="fb-bake-snippet" readonly rows="4"
+              style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.6rem 0.8rem;color:var(--gold);font-size:0.72rem;font-family:monospace;resize:none;outline:none;"></textarea>
+            <button onclick="copyBakeSnippet()" style="position:absolute;top:0.4rem;right:0.4rem;background:rgba(232,184,75,0.15);border:1px solid rgba(232,184,75,0.3);border-radius:6px;color:var(--gold);font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;letter-spacing:0.05em;" id="copy-bake-btn">Copy</button>
+          </div>
+        </div>
+
         <button class="btn-admin danger" onclick="disconnectFirebase()" style="margin-top:0;">Disconnect / Change Config</button>
       </div>
       <div id="fb-status-disconnected">
@@ -1422,6 +1438,13 @@
 })();
 
 // ═══════════════════════════════════════════════
+//  ★ HARDCODE YOUR FIREBASE CONFIG HERE ★
+//  Replace null with your config object so ALL visitors auto-connect.
+//  See admin panel → Firebase Setup → "Bake into file" for the exact line.
+// ═══════════════════════════════════════════════
+const FIREBASE_CONFIG = null; // ← replace null with your config object
+
+// ═══════════════════════════════════════════════
 //  CONSTANTS & LOCAL-ONLY STATE
 // ═══════════════════════════════════════════════
 const KEY_CONFIG  = 'nexus_admin_config';
@@ -1483,13 +1506,28 @@ function attachListeners(){
 function showConnectedState(projectId){
   document.getElementById('setup-banner').style.display = 'none';
   document.getElementById('db-live-bar').style.display  = 'block';
-  // Update admin UI
   const conn = document.getElementById('fb-status-connected');
   const disc = document.getElementById('fb-status-disconnected');
   if(conn){ conn.style.display = 'block'; }
   if(disc){ disc.style.display = 'none'; }
   const pn = document.getElementById('fb-project-name');
   if(pn) pn.textContent = projectId || '';
+
+  // Populate bake-in snippet
+  const cfg = FIREBASE_CONFIG || getFbConfig();
+  const snippet = document.getElementById('fb-bake-snippet');
+  if(snippet && cfg){
+    snippet.value = 'const FIREBASE_CONFIG = ' + JSON.stringify(cfg, null, 2) + ';';
+  }
+}
+
+function copyBakeSnippet(){
+  const ta = document.getElementById('fb-bake-snippet');
+  if(!ta) return;
+  ta.select();
+  try { document.execCommand('copy'); } catch(e){ navigator.clipboard?.writeText(ta.value); }
+  const btn = document.getElementById('copy-bake-btn');
+  if(btn){ btn.textContent = 'Copied ✓'; setTimeout(()=>btn.textContent='Copy', 2000); }
 }
 
 function showDisconnectedState(){
@@ -1965,10 +2003,10 @@ renderWinners();
 updateStats();
 recompute();
 
-// Auto-connect Firebase if config saved
-const savedFbCfg = getFbConfig();
-if(savedFbCfg){
-  initFirebase(savedFbCfg);
+// Auto-connect Firebase — hardcoded config wins, then localStorage fallback
+const _fbCfg = FIREBASE_CONFIG || getFbConfig();
+if(_fbCfg){
+  initFirebase(_fbCfg);
 } else {
   showDisconnectedState();
 }
