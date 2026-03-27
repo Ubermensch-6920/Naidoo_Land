@@ -1163,7 +1163,7 @@
           <div style="font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">⚡ Make it permanent for all visitors</div>
           <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.75rem;line-height:1.6;">
             Right now the config is only saved in <em>this browser</em>. To make every visitor (incognito, mobile, etc.) auto-connect, open <code style="background:rgba(255,255,255,0.07);padding:0.1rem 0.4rem;border-radius:4px;">index.html</code> in a text editor and replace the line:<br>
-            <code style="background:rgba(255,255,255,0.07);padding:0.1rem 0.4rem;border-radius:4px;display:block;margin:0.4rem 0;color:var(--text-dim);">const FIREBASE_CONFIG = null;</code>
+            <code style="background:rgba(255,255,255,0.07);padding:0.1rem 0.4rem;border-radius:4px;display:block;margin:0.4rem 0;color:var(--text-dim);"> FIREBASE_CONFIG = null;</code>
             with the line below — then save &amp; push to GitHub.
           </p>
           <div style="position:relative;">
@@ -1183,7 +1183,7 @@
         </p>
         <div class="field-group">
           <label>Firebase Config JSON</label>
-          <textarea id="fb-config-input" rows="8" placeholder="Paste your Firebase <script> block here — exactly as copied from Firebase Console. No editing needed.&#10;&#10;Example:&#10;  const firebaseConfig = {&#10;    apiKey: &quot;AIza...&quot;,&#10;    databaseURL: &quot;https://your-app-default-rtdb.firebaseio.com&quot;,&#10;    ...&#10;  };"></textarea>
+          <textarea id="fb-config-input" rows="8" placeholder="Paste your Firebase <script> block here — exactly as copied from Firebase Console. No editing needed.&#10;&#10;Example:&#10;   firebaseConfig = {&#10;    apiKey: &quot;AIza...&quot;,&#10;    databaseURL: &quot;https://your-app-default-rtdb.firebaseio.com&quot;,&#10;    ...&#10;  };"></textarea>
         </div>
         <button class="btn-admin primary" onclick="saveFirebaseConfig()">Connect to Firebase</button>
         <div id="fb-error" style="color:var(--red);font-size:0.78rem;margin-top:0.5rem;display:none;"></div>
@@ -1442,16 +1442,7 @@
 //  Replace null with your config object so ALL visitors auto-connect.
 //  See admin panel → Firebase Setup → "Bake into file" for the exact line.
 // ═══════════════════════════════════════════════
-const FIREBASE_CONFIG = {
-  "apiKey": "AIzaSyA0S5tBokGH5OgcLbe1uV3kdCZFl6gJxLY",
-  "authDomain": "naidoo-the-gambler.firebaseapp.com",
-  "databaseURL": "https://naidoo-the-gambler-default-rtdb.firebaseio.com",
-  "projectId": "naidoo-the-gambler",
-  "storageBucket": "naidoo-the-gambler.firebasestorage.app",
-  "messagingSenderId": "311130174178",
-  "appId": "1:311130174178:web:394432bb4c01a94bbea4bb",
-  "measurementId": "G-F2VT3DHSWS"
-}; // ← replace null with your config object
+const FIREBASE_CONFIG = FIREBASE_CONFIG; // ← replace null with your config object
 
 // ═══════════════════════════════════════════════
 //  CONSTANTS & LOCAL-ONLY STATE
