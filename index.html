@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NEXUS — The Skill Oracle</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root {
     --gold: #e8b84b;
@@ -960,7 +962,16 @@
     </div>
   </nav>
 
-  <!-- HERO -->
+  <!-- SETUP BANNER (shown until Firebase configured) -->
+  <div id="setup-banner" style="display:none; background:linear-gradient(135deg,rgba(74,158,255,0.12),rgba(232,184,75,0.08)); border-bottom:1px solid rgba(74,158,255,0.3); padding:0.8rem 2rem; text-align:center; font-size:0.82rem; letter-spacing:0.08em; color:var(--blue);">
+    ⚙ Database not connected — predictions are stored locally only. <span style="color:var(--text-dim);">Admin: open the Oracle Chamber to connect Firebase.</span>
+  </div>
+
+  <!-- DB STATUS BAR (shown when connected) -->
+  <div id="db-live-bar" style="display:none; background:rgba(0,229,160,0.06); border-bottom:1px solid rgba(0,229,160,0.2); padding:0.5rem 2rem; text-align:center; font-size:0.75rem; letter-spacing:0.15em; color:var(--emerald);">
+    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);margin-right:0.5rem;vertical-align:middle;"></span>
+    LIVE — predictions sync across all visitors in real time
+  </div>
   <div class="hero" style="position:relative;">
     <div class="hero-ring"></div>
     <div class="hero-eyebrow">Weekly Skill Draw · Season 1</div>
@@ -1136,6 +1147,40 @@
     <button class="modal-close" onclick="closeAdmin()">✕</button>
     <div class="modal-title">⬡ Oracle Chamber</div>
     <div class="modal-sub">Admin Control Panel — Invisible to participants</div>
+
+    <!-- FIREBASE SETUP -->
+    <div class="admin-section" id="fb-setup-section">
+      <div class="admin-section-title">🔥 Firebase Database Setup</div>
+      <div id="fb-status-connected" style="display:none;">
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);display:inline-block;"></span>
+          <span style="font-size:0.8rem;color:var(--emerald);">Connected to Firebase</span>
+          <span id="fb-project-name" style="font-size:0.72rem;color:var(--text-dim);margin-left:auto;"></span>
+        </div>
+        <button class="btn-admin danger" onclick="disconnectFirebase()" style="margin-top:0;">Disconnect / Change Config</button>
+      </div>
+      <div id="fb-status-disconnected">
+        <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;">
+          Paste your Firebase config below so predictions sync across all visitors.<br>
+          <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--gold);text-decoration:none;">Get it free at console.firebase.google.com →</a><br>
+          <span style="font-size:0.72rem;opacity:0.7;">Create project → Realtime Database → Rules: set read/write to <code style="background:rgba(255,255,255,0.06);padding:0.1rem 0.3rem;border-radius:4px;">true</code></span>
+        </p>
+        <div class="field-group">
+          <label>Firebase Config JSON</label>
+          <textarea id="fb-config-input" rows="6" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "your-app.firebaseapp.com",
+  "databaseURL": "https://your-app-default-rtdb.firebaseio.com",
+  "projectId": "your-app",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "12345",
+  "appId": "1:12345:web:abcdef"
+}'></textarea>
+        </div>
+        <button class="btn-admin primary" onclick="saveFirebaseConfig()">Connect to Firebase</button>
+        <div id="fb-error" style="color:var(--red);font-size:0.78rem;margin-top:0.5rem;display:none;"></div>
+      </div>
+    </div>
 
     <!-- ALGORITHM CONFIG -->
     <div class="admin-section">
@@ -1385,22 +1430,126 @@
 })();
 
 // ═══════════════════════════════════════════════
-//  STATE
+//  CONSTANTS & LOCAL-ONLY STATE
 // ═══════════════════════════════════════════════
-const KEY_PREDS  = 'nexus_predictions';
-const KEY_DRAWS  = 'nexus_draws';
-const KEY_CONFIG = 'nexus_admin_config';
-const KEY_PWD    = 'nexus_pwd';
+const KEY_CONFIG  = 'nexus_admin_config';
+const KEY_FB      = 'nexus_fb_config';
 const DEFAULT_PWD = 'oracle2025';
 
-let selected = [];
+let selected  = [];
+let db        = null;          // Firebase database ref
+let liveData  = { preds: [], draws: [] }; // in-memory mirror of remote data
 
-function load(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
-function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+// ── Local-only helpers (admin config stays on device) ──
+function lsGet(k, def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
+function lsSave(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+function getConfig(){ return lsGet(KEY_CONFIG, { prime:47, offset:13, depth:7, label:'Week 1 Draw', computed:[], revealed:false }); }
 
-function getPreds(){ return load(KEY_PREDS, []); }
-function getDraws(){ return load(KEY_DRAWS, []); }
-function getConfig(){ return load(KEY_CONFIG, { prime:47, offset:13, depth:7, label:'Week 1 Draw', computed:[], revealed:false }); }
+// ═══════════════════════════════════════════════
+//  FIREBASE SETUP
+// ═══════════════════════════════════════════════
+function getFbConfig(){ return lsGet(KEY_FB, null); }
+
+function initFirebase(cfg){
+  try {
+    // Delete existing app if reinitialising
+    if(firebase.apps.length) firebase.apps[0].delete();
+    const app = firebase.initializeApp(cfg);
+    db = firebase.database(app);
+    attachListeners();
+    showConnectedState(cfg.projectId || cfg.databaseURL);
+    return true;
+  } catch(e){
+    console.error('Firebase init error:', e);
+    db = null;
+    return false;
+  }
+}
+
+function attachListeners(){
+  if(!db) return;
+
+  // Predictions — live listener
+  db.ref('predictions').on('value', snap => {
+    const raw = snap.val() || {};
+    liveData.preds = Object.values(raw).sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+    renderPredictions();
+    updateStats();
+    loadAdminSubmissions();
+  });
+
+  // Draws — live listener
+  db.ref('draws').on('value', snap => {
+    const raw = snap.val() || {};
+    liveData.draws = Object.values(raw).sort((a,b)=> new Date(a.declared_at)-new Date(b.declared_at));
+    renderWinners();
+    renderPredictions(); // re-render so match highlights update
+    updateStats();
+  });
+}
+
+function showConnectedState(projectId){
+  document.getElementById('setup-banner').style.display = 'none';
+  document.getElementById('db-live-bar').style.display  = 'block';
+  // Update admin UI
+  const conn = document.getElementById('fb-status-connected');
+  const disc = document.getElementById('fb-status-disconnected');
+  if(conn){ conn.style.display = 'block'; }
+  if(disc){ disc.style.display = 'none'; }
+  const pn = document.getElementById('fb-project-name');
+  if(pn) pn.textContent = projectId || '';
+}
+
+function showDisconnectedState(){
+  document.getElementById('setup-banner').style.display = 'block';
+  document.getElementById('db-live-bar').style.display  = 'none';
+  const conn = document.getElementById('fb-status-connected');
+  const disc = document.getElementById('fb-status-disconnected');
+  if(conn){ conn.style.display = 'none'; }
+  if(disc){ disc.style.display = 'block'; }
+  // Fall back to empty
+  liveData = { preds: [], draws: [] };
+  renderPredictions();
+  renderWinners();
+  updateStats();
+}
+
+function saveFirebaseConfig(){
+  const raw = document.getElementById('fb-config-input').value.trim();
+  const errEl = document.getElementById('fb-error');
+  errEl.style.display = 'none';
+  let cfg;
+  try {
+    // Strip JS object syntax if pasted without quotes on keys
+    const cleaned = raw.replace(/(\w+):/g, '"$1":').replace(/,\s*}/g,'}').replace(/,\s*]/g,']');
+    cfg = JSON.parse(raw.includes('"apiKey"') ? raw : cleaned);
+  } catch(e){
+    errEl.textContent = 'Invalid JSON — paste the object exactly as shown in Firebase console.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!cfg.databaseURL){
+    errEl.textContent = 'Missing databaseURL — make sure you\'ve created a Realtime Database in Firebase.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const ok = initFirebase(cfg);
+  if(ok){
+    lsSave(KEY_FB, cfg);
+    document.getElementById('fb-config-input').value = '';
+  } else {
+    errEl.textContent = 'Could not connect. Check your config and database rules.';
+    errEl.style.display = 'block';
+  }
+}
+
+function disconnectFirebase(){
+  if(!confirm('Disconnect from Firebase? Predictions will no longer sync until reconnected.')) return;
+  localStorage.removeItem(KEY_FB);
+  if(firebase.apps.length) firebase.apps[0].delete().catch(()=>{});
+  db = null;
+  showDisconnectedState();
+}
 
 // ═══════════════════════════════════════════════
 //  ALGORITHM
@@ -1478,9 +1627,13 @@ function generateId(){
   return id;
 }
 
-function submitPrediction(){
+async function submitPrediction(){
   const name = document.getElementById('user-name').value.trim() || 'Anonymous';
   if(selected.length !== 5){ alert('Please select exactly 5 numbers.'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Locking…';
 
   const id = generateId();
   const pred = {
@@ -1490,26 +1643,28 @@ function submitPrediction(){
     timestamp: new Date().toISOString()
   };
 
-  const preds = getPreds();
-  preds.push(pred);
-  save(KEY_PREDS, preds);
+  try {
+    if(db){
+      await db.ref('predictions/' + id).set(pred);
+    } else {
+      // Offline fallback — only visible locally
+      liveData.preds.push(pred);
+      renderPredictions();
+      updateStats();
+    }
+    showToast(id);
+    spawnConfetti();
+  } catch(e){
+    alert('Could not save prediction: ' + e.message);
+  }
 
-  // Show toast
-  showToast(id);
-
-  // Reset
+  // Reset picker
   selected = [];
   updateBalls();
-  updateSubmitBtn();
+  btn.disabled = false;
+  btn.textContent = 'Lock In Prediction';
   document.querySelectorAll('.num-btn').forEach(b=>b.classList.remove('selected'));
   document.getElementById('user-name').value = '';
-
-  // Confetti
-  spawnConfetti();
-
-  // Refresh UI
-  renderPredictions();
-  updateStats();
 }
 
 function showToast(id){
@@ -1537,12 +1692,12 @@ function spawnConfetti(){
 }
 
 // ═══════════════════════════════════════════════
-//  RENDER PREDICTIONS
+//  RENDER PREDICTIONS  (reads from liveData)
 // ═══════════════════════════════════════════════
 function renderPredictions(){
-  const preds = getPreds();
-  const draws = getDraws();
-  const lastDraw = draws.length ? draws[draws.length-1] : null;
+  const preds  = liveData.preds;
+  const draws  = liveData.draws;
+  const lastDraw  = draws.length ? draws[draws.length-1] : null;
   const winnerSet = lastDraw ? new Set(lastDraw.numbers) : null;
 
   const el = document.getElementById('predictions-list');
@@ -1552,15 +1707,14 @@ function renderPredictions(){
   }
 
   el.innerHTML = [...preds].reverse().map(p=>{
-    const isWinner = lastDraw && lastDraw.winner_id === p.id;
+    const isWinner  = lastDraw && lastDraw.winner_id === p.id;
     const matchCount = winnerSet ? p.numbers.filter(n=>winnerSet.has(n)).length : null;
-    const numsHtml = p.numbers.map(n=>{
+    const numsHtml  = p.numbers.map(n=>{
       const m = winnerSet && winnerSet.has(n) ? ' match' : '';
       return `<div class="pred-ball${m}">${n}</div>`;
     }).join('');
     const matchHtml = matchCount !== null
-      ? `<div class="match-count">Matched: <span>${matchCount}/5</span></div>`
-      : '';
+      ? `<div class="match-count">Matched: <span>${matchCount}/5</span></div>` : '';
     const dateStr = new Date(p.timestamp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     return `
       <div class="pred-card${isWinner?' winner':''}">
@@ -1571,53 +1725,43 @@ function renderPredictions(){
         </div>
         <div class="pred-nums">${numsHtml}</div>
         ${matchHtml}
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
 // ═══════════════════════════════════════════════
-//  RENDER WINNERS
+//  RENDER WINNERS  (reads from liveData)
 // ═══════════════════════════════════════════════
 function renderWinners(){
-  const draws = getDraws();
+  const draws = liveData.draws;
   const el = document.getElementById('winners-list');
   if(!draws.length){
     el.innerHTML = `<div class="no-winners">No draws declared yet. Check back after the next draw window.</div>`;
+    document.getElementById('current-result-section').style.display = 'none';
     return;
   }
-  el.innerHTML = [...draws].reverse().map(d=>{
+  el.innerHTML = [...draws].reverse().map((d,i)=>{
     const numsHtml = d.numbers.map(n=>`<div class="winner-ball">${n}</div>`).join('');
-    const dateStr = new Date(d.declared_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    const dateStr  = new Date(d.declared_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    const drawNum  = draws.length - i;
     return `
       <div class="winner-card">
         <div class="winner-draw-label">✦ ${escHtml(d.label)}</div>
         <div class="winner-nums">${numsHtml}</div>
         <div class="winner-meta">
-          <div class="winner-meta-item">
-            <label>Winner ID</label>
-            <value class="id">${d.winner_id ? escHtml(d.winner_id) : '— No exact match'}</value>
-          </div>
-          <div class="winner-meta-item">
-            <label>Declared</label>
-            <value>${dateStr}</value>
-          </div>
-          <div class="winner-meta-item">
-            <label>Draw #</label>
-            <value>${draws.indexOf(d)+1}</value>
-          </div>
+          <div class="winner-meta-item"><label>Winner ID</label>
+            <value class="id">${d.winner_id ? escHtml(d.winner_id) : '— No exact match'}</value></div>
+          <div class="winner-meta-item"><label>Declared</label><value>${dateStr}</value></div>
+          <div class="winner-meta-item"><label>Draw #</label><value>${drawNum}</value></div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 
-  // Show current result banner
   const lastDraw = draws[draws.length-1];
   if(lastDraw){
-    const section = document.getElementById('current-result-section');
-    section.style.display = 'block';
-    const numsEl = document.getElementById('current-win-nums');
-    numsEl.innerHTML = lastDraw.numbers.map(n=>`<div class="winner-ball">${n}</div>`).join('');
+    document.getElementById('current-result-section').style.display = 'block';
+    document.getElementById('current-win-nums').innerHTML =
+      lastDraw.numbers.map(n=>`<div class="winner-ball">${n}</div>`).join('');
     document.getElementById('current-draw-id').textContent = lastDraw.label;
   }
 }
@@ -1626,8 +1770,8 @@ function renderWinners(){
 //  STATS
 // ═══════════════════════════════════════════════
 function updateStats(){
-  document.getElementById('stat-predictions').textContent = getPreds().length;
-  document.getElementById('stat-draws').textContent = getDraws().length;
+  document.getElementById('stat-predictions').textContent = liveData.preds.length;
+  document.getElementById('stat-draws').textContent       = liveData.draws.length;
 }
 
 // ═══════════════════════════════════════════════
@@ -1639,23 +1783,16 @@ function openAdminGate(){
   document.getElementById('pwd-error').style.display = 'none';
   setTimeout(()=>document.getElementById('admin-pwd').focus(), 300);
 }
-
-function closePwdModal(){
-  document.getElementById('pwd-overlay').classList.remove('open');
-}
-
+function closePwdModal(){ document.getElementById('pwd-overlay').classList.remove('open'); }
 function togglePwd(){
   const inp = document.getElementById('admin-pwd');
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
-
 function checkPassword(){
   const entered = document.getElementById('admin-pwd').value;
-  const stored = localStorage.getItem('nexus_admin_pwd') || DEFAULT_PWD;
-  if(entered === stored){
-    closePwdModal();
-    openAdmin();
-  } else {
+  const stored  = localStorage.getItem('nexus_admin_pwd') || DEFAULT_PWD;
+  if(entered === stored){ closePwdModal(); openAdmin(); }
+  else {
     document.getElementById('pwd-error').style.display = 'block';
     document.getElementById('admin-pwd').value = '';
     document.getElementById('admin-pwd').focus();
@@ -1668,78 +1805,89 @@ function checkPassword(){
 function openAdmin(){
   loadAdminConfig();
   loadAdminSubmissions();
+  // Refresh Firebase connection UI
+  const cfg = getFbConfig();
+  if(cfg && db){
+    showConnectedState(cfg.projectId || cfg.databaseURL);
+  } else {
+    const conn = document.getElementById('fb-status-connected');
+    const disc = document.getElementById('fb-status-disconnected');
+    if(conn) conn.style.display = 'none';
+    if(disc) disc.style.display = 'block';
+  }
   document.getElementById('admin-overlay').classList.add('open');
 }
+function closeAdmin(){ document.getElementById('admin-overlay').classList.remove('open'); }
 
-function closeAdmin(){
-  document.getElementById('admin-overlay').classList.remove('open');
-}
-
-function updateParamDisplay(el, valId){
-  document.getElementById(valId).textContent = el.value;
-}
+function updateParamDisplay(el, valId){ document.getElementById(valId).textContent = el.value; }
 
 function recompute(){
-  const prime = parseInt(document.getElementById('param-prime').value);
+  const prime  = parseInt(document.getElementById('param-prime').value);
   const offset = parseInt(document.getElementById('param-offset').value);
-  const depth = parseInt(document.getElementById('param-depth').value);
-  const nums = computeOracle(prime, offset, depth);
-  const el = document.getElementById('admin-computed');
-  el.innerHTML = nums.map(n=>`<div class="computed-ball">${n}</div>`).join('');
+  const depth  = parseInt(document.getElementById('param-depth').value);
+  const nums   = computeOracle(prime, offset, depth);
+  document.getElementById('admin-computed').innerHTML =
+    nums.map(n=>`<div class="computed-ball">${n}</div>`).join('');
 }
 
 function loadAdminConfig(){
   const cfg = getConfig();
-  document.getElementById('param-prime').value = cfg.prime || 47;
+  document.getElementById('param-prime').value  = cfg.prime  || 47;
   document.getElementById('param-offset').value = cfg.offset || 13;
-  document.getElementById('param-depth').value = cfg.depth || 7;
-  document.getElementById('param-label').value = cfg.label || 'Week 1 Draw';
-  document.getElementById('prime-val').textContent = cfg.prime || 47;
+  document.getElementById('param-depth').value  = cfg.depth  || 7;
+  document.getElementById('param-label').value  = cfg.label  || 'Week 1 Draw';
+  document.getElementById('prime-val').textContent  = cfg.prime  || 47;
   document.getElementById('offset-val').textContent = cfg.offset || 13;
-  document.getElementById('depth-val').textContent = cfg.depth || 7;
+  document.getElementById('depth-val').textContent  = cfg.depth  || 7;
   recompute();
 }
 
 function saveAlgorithm(){
-  const prime = parseInt(document.getElementById('param-prime').value);
+  const prime  = parseInt(document.getElementById('param-prime').value);
   const offset = parseInt(document.getElementById('param-offset').value);
-  const depth = parseInt(document.getElementById('param-depth').value);
-  const label = document.getElementById('param-label').value || 'Week 1 Draw';
+  const depth  = parseInt(document.getElementById('param-depth').value);
+  const label  = document.getElementById('param-label').value || 'Week 1 Draw';
   const computed = computeOracle(prime, offset, depth);
-  save(KEY_CONFIG, { prime, offset, depth, label, computed, revealed: false });
-  flashBtn('Algorithm config saved! ✓', 'primary');
+  lsSave(KEY_CONFIG, { prime, offset, depth, label, computed, revealed: false });
+  const btns = document.querySelectorAll('.btn-admin.primary');
+  btns.forEach(b=>{ if(b.textContent.includes('Save Algorithm')){ const o=b.textContent; b.textContent='Saved ✓'; setTimeout(()=>b.textContent=o,2000); } });
 }
 
-function declareWinner(){
+async function declareWinner(){
   const cfg = getConfig();
-  if(!cfg.computed || !cfg.computed.length){
-    alert('Please save an algorithm config first.');
-    return;
-  }
+  if(!cfg.computed || !cfg.computed.length){ alert('Please save an algorithm config first.'); return; }
   const winnerId = document.getElementById('winner-id-input').value.trim() || null;
-  if(!confirm(`Declare draw "${cfg.label}" with numbers [${cfg.computed.join(', ')}]? This will be publicly visible.`)) return;
+  if(!confirm(`Declare draw "${cfg.label}" with numbers [${cfg.computed.join(', ')}]?\nThis will be publicly visible to all visitors.`)) return;
 
-  const draws = getDraws();
-  draws.push({
+  const drawId = 'draw_' + Date.now();
+  const drawObj = {
+    id: drawId,
     label: cfg.label,
     numbers: cfg.computed,
     winner_id: winnerId,
     declared_at: new Date().toISOString()
-  });
-  save(KEY_DRAWS, draws);
+  };
 
-  renderWinners();
-  updateStats();
-  renderPredictions();
-  closeAdmin();
-  spawnConfetti();
+  try {
+    if(db){
+      await db.ref('draws/' + drawId).set(drawObj);
+    } else {
+      liveData.draws.push(drawObj);
+      renderWinners();
+      updateStats();
+    }
+    closeAdmin();
+    spawnConfetti();
+  } catch(e){
+    alert('Failed to save draw: ' + e.message);
+  }
 }
 
 function loadAdminSubmissions(){
-  const preds = getPreds();
-  const cfg = getConfig();
+  const preds  = liveData.preds;
+  const cfg    = getConfig();
   const winSet = cfg.computed ? new Set(cfg.computed) : null;
-  const tbody = document.getElementById('admin-submissions-body');
+  const tbody  = document.getElementById('admin-submissions-body');
   if(!preds.length){
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:1rem;">No submissions yet</td></tr>';
     return;
@@ -1749,33 +1897,31 @@ function loadAdminSubmissions(){
       const m = winSet && winSet.has(n) ? ' match' : '';
       return `<div class="tbl-ball${m}">${n}</div>`;
     }).join('');
-    const date = new Date(p.timestamp).toLocaleDateString();
     return `<tr>
       <td class="tbl-id">${p.id}</td>
       <td>${escHtml(p.name)}</td>
       <td><div class="tbl-nums">${numsHtml}</div></td>
-      <td>${date}</td>
+      <td>${new Date(p.timestamp).toLocaleDateString()}</td>
     </tr>`;
   }).join('');
 }
 
-function resetAll(){
-  if(!confirm('This will delete ALL predictions and draw history. Are you absolutely sure?')) return;
-  if(!confirm('Final confirmation: wipe everything?')) return;
-  localStorage.removeItem(KEY_PREDS);
-  localStorage.removeItem(KEY_DRAWS);
-  localStorage.removeItem(KEY_CONFIG);
-  renderPredictions();
-  renderWinners();
-  updateStats();
-  document.getElementById('current-result-section').style.display = 'none';
-  closeAdmin();
-  alert('All data cleared.');
-}
-
-function flashBtn(msg, type){
-  const btns = document.querySelectorAll('.btn-admin.primary');
-  btns.forEach(b=>{ if(b.textContent.includes('Save')) { const orig = b.textContent; b.textContent = msg; setTimeout(()=>b.textContent = orig, 2000); }});
+async function resetAll(){
+  if(!confirm('Delete ALL predictions and draws for everyone? This cannot be undone.')) return;
+  if(!confirm('Final confirmation — wipe everything from the database?')) return;
+  try {
+    if(db){
+      await db.ref('predictions').remove();
+      await db.ref('draws').remove();
+    }
+    liveData = { preds: [], draws: [] };
+    lsSave(KEY_CONFIG, null);
+    localStorage.removeItem(KEY_CONFIG);
+    renderPredictions(); renderWinners(); updateStats();
+    document.getElementById('current-result-section').style.display = 'none';
+    closeAdmin();
+    alert('All data cleared.');
+  } catch(e){ alert('Reset failed: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════
@@ -1785,13 +1931,8 @@ function scrollTo(id){
   document.getElementById(id)?.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
-// Close modal on overlay click
-document.getElementById('pwd-overlay').addEventListener('click', function(e){
-  if(e.target === this) closePwdModal();
-});
-document.getElementById('admin-overlay').addEventListener('click', function(e){
-  if(e.target === this) closeAdmin();
-});
+document.getElementById('pwd-overlay').addEventListener('click', function(e){ if(e.target===this) closePwdModal(); });
+document.getElementById('admin-overlay').addEventListener('click', function(e){ if(e.target===this) closeAdmin(); });
 
 // ═══════════════════════════════════════════════
 //  UTILITY
@@ -1808,6 +1949,14 @@ renderPredictions();
 renderWinners();
 updateStats();
 recompute();
+
+// Auto-connect Firebase if config saved
+const savedFbCfg = getFbConfig();
+if(savedFbCfg){
+  initFirebase(savedFbCfg);
+} else {
+  showDisconnectedState();
+}
 </script>
 </body>
 </html>
