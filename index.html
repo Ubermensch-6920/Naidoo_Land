@@ -1167,15 +1167,7 @@
         </p>
         <div class="field-group">
           <label>Firebase Config JSON</label>
-          <textarea id="fb-config-input" rows="6" placeholder='{
-  "apiKey": "AIza...",
-  "authDomain": "your-app.firebaseapp.com",
-  "databaseURL": "https://your-app-default-rtdb.firebaseio.com",
-  "projectId": "your-app",
-  "storageBucket": "your-app.appspot.com",
-  "messagingSenderId": "12345",
-  "appId": "1:12345:web:abcdef"
-}'></textarea>
+          <textarea id="fb-config-input" rows="8" placeholder="Paste your Firebase <script> block here — exactly as copied from Firebase Console. No editing needed.&#10;&#10;Example:&#10;  const firebaseConfig = {&#10;    apiKey: &quot;AIza...&quot;,&#10;    databaseURL: &quot;https://your-app-default-rtdb.firebaseio.com&quot;,&#10;    ...&#10;  };"></textarea>
         </div>
         <button class="btn-admin primary" onclick="saveFirebaseConfig()">Connect to Firebase</button>
         <div id="fb-error" style="color:var(--red);font-size:0.78rem;margin-top:0.5rem;display:none;"></div>
@@ -1514,31 +1506,54 @@ function showDisconnectedState(){
   updateStats();
 }
 
+function parseFirebaseSnippet(raw) {
+  // Strategy 1: already valid JSON object
+  try {
+    const j = JSON.parse(raw);
+    if (j && j.apiKey) return j;
+  } catch(e){}
+
+  // Strategy 2: extract the firebaseConfig = { ... } object from a script block
+  // Pull everything between the outermost { } of the config object
+  const objMatch = raw.match(/const\s+firebaseConfig\s*=\s*(\{[\s\S]*?\});/);
+  const block = objMatch ? objMatch[1] : raw;
+
+  // Strategy 3: parse a JS object literal by extracting key: "value" pairs
+  const cfg = {};
+  const kvRegex = /(\w+)\s*:\s*["'`]([^"'`]+)["'`]/g;
+  let m;
+  while ((m = kvRegex.exec(block)) !== null) {
+    cfg[m[1]] = m[2];
+  }
+  if (cfg.apiKey) return cfg;
+
+  return null;
+}
+
 function saveFirebaseConfig(){
-  const raw = document.getElementById('fb-config-input').value.trim();
+  const raw   = document.getElementById('fb-config-input').value.trim();
   const errEl = document.getElementById('fb-error');
   errEl.style.display = 'none';
-  let cfg;
-  try {
-    // Strip JS object syntax if pasted without quotes on keys
-    const cleaned = raw.replace(/(\w+):/g, '"$1":').replace(/,\s*}/g,'}').replace(/,\s*]/g,']');
-    cfg = JSON.parse(raw.includes('"apiKey"') ? raw : cleaned);
-  } catch(e){
-    errEl.textContent = 'Invalid JSON — paste the object exactly as shown in Firebase console.';
+
+  const cfg = parseFirebaseSnippet(raw);
+
+  if (!cfg || !cfg.apiKey) {
+    errEl.innerHTML = 'Could not extract config. Make sure your paste includes <code>apiKey</code>. You can paste the entire &lt;script&gt; block from Firebase — no editing needed.';
     errEl.style.display = 'block';
     return;
   }
-  if(!cfg.databaseURL){
-    errEl.textContent = 'Missing databaseURL — make sure you\'ve created a Realtime Database in Firebase.';
+  if (!cfg.databaseURL) {
+    errEl.innerHTML = 'Missing <strong>databaseURL</strong>. In Firebase Console → Realtime Database → copy the URL (ends in <em>.firebaseio.com</em>) and add it to your config.';
     errEl.style.display = 'block';
     return;
   }
+
   const ok = initFirebase(cfg);
-  if(ok){
+  if (ok) {
     lsSave(KEY_FB, cfg);
     document.getElementById('fb-config-input').value = '';
   } else {
-    errEl.textContent = 'Could not connect. Check your config and database rules.';
+    errEl.textContent = 'Could not connect. Check your database rules are set to allow read/write.';
     errEl.style.display = 'block';
   }
 }
