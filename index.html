@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — The Skill Oracle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #e8b84b;
+    --gold-dim: rgba(232,184,75,0.15);
+    --gold-glow: rgba(232,184,75,0.4);
+    --blue: #4a9eff;
+    --blue-dim: rgba(74,158,255,0.15);
+    --emerald: #00e5a0;
+    --red: #ff4a6e;
+    --bg: #06060e;
+    --bg2: #0d0d1a;
+    --bg3: #12122a;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --text: #dde0f0;
+    --text-dim: rgba(221,224,240,0.5);
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Rajdhani', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── CANVAS STARFIELD ── */
+  #starfield {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── LAYOUT ── */
+  .page { position: relative; z-index: 1; }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(6,6,14,0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    background: linear-gradient(135deg, var(--gold), #fff8e0, var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+  .nav-tagline {
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a {
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav-links a:hover { color: var(--gold); }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 5rem 2rem 4rem;
+    position: relative;
+  }
+  .hero-eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.2s forwards;
+  }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(180deg, #fff 0%, var(--gold) 60%, #a07020 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.4s forwards;
+  }
+  .hero-sub {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    max-width: 480px;
+    margin: 0 auto 3rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s forwards;
+  }
+  .hero-sub span { color: var(--gold); font-weight: 600; }
+
+  /* ── DRAW COUNTER ── */
+  .draw-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    background: linear-gradient(135deg, rgba(232,184,75,0.1), rgba(74,158,255,0.1));
+    border: 1px solid rgba(232,184,75,0.3);
+    border-radius: 100px;
+    padding: 0.6rem 1.6rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 4rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.8s forwards;
+  }
+  .draw-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 8px var(--emerald);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform: scale(1); }
+    50% { opacity:0.5; transform: scale(0.8); }
+  }
+
+  /* ── SECTION WRAPPER ── */
+  .section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 2rem 5rem;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 600;
+    margin-bottom: 2.5rem;
+    line-height: 1.2;
+  }
+
+  /* ── NUMBER PICKER ── */
+  .picker-card {
+    background: linear-gradient(135deg, rgba(232,184,75,0.06), rgba(74,158,255,0.04));
+    border: 1px solid rgba(232,184,75,0.2);
+    border-radius: 20px;
+    padding: 2.5rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(232,184,75,0.06), 0 0 120px rgba(232,184,75,0.03);
+    animation: cardBreath 4s ease-in-out infinite;
+  }
+  @keyframes cardBreath {
+    0%,100% { box-shadow: 0 0 60px rgba(232,184,75,0.06), 0 0 120px rgba(232,184,75,0.03); border-color: rgba(232,184,75,0.2); }
+    50%      { box-shadow: 0 0 80px rgba(232,184,75,0.14), 0 0 160px rgba(232,184,75,0.07); border-color: rgba(232,184,75,0.4); }
+  }
+  .picker-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 30%; right: 30%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .picker-instruction {
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  .picker-instruction strong { color: var(--gold); font-size: 1rem; }
+
+  /* Number grid */
+  .number-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 8px;
+    margin-bottom: 2rem;
+  }
+  .num-btn {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+    overflow: hidden;
+  }
+  .num-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, var(--gold-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .num-btn:hover:not(.disabled) {
+    border-color: rgba(232,184,75,0.4);
+    color: var(--gold);
+    transform: scale(1.08);
+  }
+  .num-btn.selected {
+    background: linear-gradient(135deg, rgba(232,184,75,0.25), rgba(232,184,75,0.1));
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 16px rgba(232,184,75,0.3), inset 0 0 8px rgba(232,184,75,0.1);
+    transform: scale(1.1);
+  }
+  .num-btn.selected::after { opacity: 1; }
+  .num-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Selected display */
+  .selected-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .sel-ball {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 2px solid rgba(232,184,75,0.3);
+    background: rgba(6,6,14,0.8);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+  }
+  .sel-ball.filled {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(232,184,75,0.1);
+    box-shadow: 0 0 20px rgba(232,184,75,0.25), inset 0 0 10px rgba(232,184,75,0.1);
+    animation: ballIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes ballIn {
+    from { transform: scale(0) rotate(-180deg); opacity: 0; }
+    to { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .sel-ball .ball-num { position: relative; z-index: 1; }
+
+  /* User name input */
+  .input-row {
+    display: flex; gap: 1rem; align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .input-group {
+    flex: 1; min-width: 200px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  .input-group input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-group input:focus {
+    border-color: rgba(232,184,75,0.5);
+    box-shadow: 0 0 0 3px rgba(232,184,75,0.1);
+  }
+  .input-group input::placeholder { color: rgba(221,224,240,0.25); }
+
+  /* Submit button */
+  .btn-submit {
+    background: linear-gradient(135deg, #c49a1a, var(--gold), #f0d068);
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 2rem;
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #06060e;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-submit::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -60%;
+    width: 40%; height: 200%;
+    background: rgba(255,255,255,0.3);
+    transform: skewX(-20deg);
+    transition: left 0.4s;
+  }
+  .btn-submit:hover::before { left: 130%; }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,184,75,0.4); }
+  .btn-submit:active { transform: translateY(0); }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── CONFIRMATION TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 2rem; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: linear-gradient(135deg, #0d1a12, #0d1520);
+    border: 1px solid var(--emerald);
+    border-radius: 14px;
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+    z-index: 999;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    min-width: 320px;
+    box-shadow: 0 8px 40px rgba(0,229,160,0.2);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-icon { font-size: 1.5rem; }
+  .toast-title { font-family: var(--font-display); font-size: 0.75rem; letter-spacing: 0.15em; color: var(--emerald); }
+  .toast-body { font-size: 0.9rem; color: var(--text-dim); }
+  .toast-id { font-size: 1.1rem; font-weight: 700; color: var(--gold); letter-spacing: 0.1em; }
+
+  /* ── MY PREDICTIONS ── */
+  .predictions-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .pred-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    transition: border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .pred-card.winner {
+    border-color: var(--gold);
+    background: rgba(232,184,75,0.05);
+  }
+  .pred-card.winner::before {
+    content: '🏆 WINNER';
+    position: absolute;
+    top: 0; right: 0;
+    background: var(--gold);
+    color: #06060e;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 0.25rem 0.75rem;
+    border-bottom-left-radius: 8px;
+  }
+  .pred-info { flex: 1; }
+  .pred-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.15rem; }
+  .pred-id { font-size: 0.72rem; letter-spacing: 0.12em; color: var(--text-dim); }
+  .pred-date { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.1rem; }
+  .pred-nums { display: flex; gap: 6px; }
+  .pred-ball {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(232,184,75,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  .pred-ball.match { border-color: var(--emerald); color: var(--emerald); background: rgba(0,229,160,0.1); }
+  .match-count { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
+  .match-count span { color: var(--emerald); font-weight: 700; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-dim);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+  }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
+
+  /* ── WINNERS HALL ── */
+  .winner-card {
+    background: linear-gradient(135deg, rgba(232,184,75,0.07), rgba(74,158,255,0.04));
+    border: 1px solid rgba(232,184,75,0.25);
+    border-radius: 18px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .winner-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .winner-draw-label {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .winner-nums {
+    display: flex; gap: 8px;
+    margin-bottom: 1rem;
+  }
+  .winner-ball {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(232,184,75,0.4), rgba(232,184,75,0.1));
+    border: 1.5px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gold);
+    box-shadow: 0 0 12px rgba(232,184,75,0.2);
+  }
+  .winner-meta { display: flex; gap: 2rem; flex-wrap: wrap; }
+  .winner-meta-item label {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.2rem;
+  }
+  .winner-meta-item value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .winner-meta-item value.id { color: var(--gold); }
+  .no-winners {
+    text-align: center; padding: 2rem;
+    color: var(--text-dim); font-size: 0.9rem;
+    border: 1px dashed var(--border); border-radius: 14px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  .how-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+  }
+  .how-num {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: rgba(232,184,75,0.15);
+    line-height: 1;
+    margin-bottom: 0.75rem;
+  }
+  .how-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.4rem; }
+  .how-desc { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 4rem;
+    padding: 3rem 2rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4rem;
+    background: linear-gradient(90deg, transparent, rgba(232,184,75,0.03), transparent);
+  }
+  .stat-item { text-align: center; }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .stat-label { font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-dim); }
+
+  /* ── ADMIN PANEL ── */
+  #admin-trigger {
+    position: fixed;
+    bottom: 1.5rem; right: 1.5rem;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    z-index: 200;
+    transition: all 0.3s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.05);
+    letter-spacing: 0.1em;
+  }
+  #admin-trigger:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.2);
+  }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(6,6,14,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: linear-gradient(135deg, #0d0d1e, #141430);
+    border: 1px solid rgba(232,184,75,0.3);
+    border-radius: 20px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    transform: scale(0.92) translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+  }
+  .modal-overlay.open .modal { transform: scale(1) translateY(0); }
+
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 20%; right: 20%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+  }
+  .modal-sub { font-size: 0.8rem; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 2rem; }
+
+  .modal-close {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; width: 32px; height: 32px;
+    cursor: pointer; color: var(--text-dim); font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { border-color: var(--red); color: var(--red); }
+
+  /* Admin form fields */
+  .admin-section { margin-bottom: 2rem; }
+  .admin-section-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .field-group { margin-bottom: 1rem; }
+  .field-group label {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+  .field-group input, .field-group select, .field-group textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-group input[type="range"] {
+    padding: 0.4rem 0;
+    accent-color: var(--gold);
+    cursor: pointer;
+  }
+  .field-group input:focus, .field-group select:focus { border-color: rgba(232,184,75,0.5); }
+  .field-group select { cursor: pointer; }
+  .field-group textarea { resize: vertical; min-height: 60px; }
+
+  .computed-display {
+    display: flex; gap: 0.75rem; flex-wrap: wrap;
+    padding: 1rem;
+    background: rgba(232,184,75,0.05);
+    border: 1px solid rgba(232,184,75,0.2);
+    border-radius: 12px;
+    margin-top: 0.5rem;
+  }
+  .computed-ball {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(232,184,75,0.3), transparent);
+    border: 1.5px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .btn-admin {
+    background: transparent;
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 0.65rem 1.5rem;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .btn-admin.primary {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(232,184,75,0.05);
+  }
+  .btn-admin.primary:hover { background: rgba(232,184,75,0.12); }
+  .btn-admin.danger {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(255,74,110,0.05);
+  }
+  .btn-admin.danger:hover { background: rgba(255,74,110,0.12); }
+  .btn-admin.success {
+    border-color: var(--emerald);
+    color: var(--emerald);
+    background: rgba(0,229,160,0.05);
+  }
+  .btn-admin.success:hover { background: rgba(0,229,160,0.12); }
+
+  /* Admin login */
+  #admin-login-overlay {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .pwd-input-wrap { position: relative; }
+  .pwd-input-wrap input { padding-right: 3rem; }
+  .pwd-toggle {
+    position: absolute; right: 0.75rem; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--text-dim); cursor: pointer; font-size: 1rem;
+    padding: 0.25rem;
+  }
+
+  /* ── ALL SUBMISSIONS ADMIN TABLE ── */
+  .submissions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  .submissions-table th {
+    text-align: left;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .submissions-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .submissions-table tr:hover td { background: var(--surface); }
+  .tbl-nums { display: flex; gap: 4px; }
+  .tbl-ball {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(232,184,75,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700;
+    color: var(--gold);
+  }
+  .tbl-ball.match { border-color: var(--emerald); color: var(--emerald); }
+  .tbl-id { color: var(--gold); letter-spacing: 0.08em; font-size: 0.75rem; }
+
+  /* Scrollable table wrapper */
+  .table-wrap { max-height: 260px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--border); }
+  .table-wrap::-webkit-scrollbar { width: 4px; }
+  .table-wrap::-webkit-scrollbar-track { background: transparent; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: rgba(221,224,240,0.25);
+    text-transform: uppercase;
+  }
+
+  /* ── PASSWORD MODAL ── */
+  #pwd-modal .modal-title { color: var(--blue); }
+  #pwd-modal .modal::before { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .number-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+    .num-btn { font-size: 0.8rem; }
+    .sel-ball { width: 46px; height: 46px; font-size: 0.95rem; }
+    .stats-bar { gap: 2rem; }
+    .stat-num { font-size: 1.5rem; }
+    nav { padding: 0.75rem 1rem; }
+    .nav-links { gap: 1rem; }
+    .picker-card { padding: 1.5rem; }
+  }
+
+  /* ── CAT MASCOT ── */
+  .cat-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 auto 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 1.0s forwards;
+    position: relative;
+  }
+  .cat-gif {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--gold);
+    box-shadow:
+      0 0 0 6px rgba(232,184,75,0.12),
+      0 0 30px rgba(232,184,75,0.35),
+      0 0 60px rgba(232,184,75,0.15);
+    animation: catGlow 2.5s ease-in-out infinite;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .cat-gif:hover { transform: scale(1.12) rotate(-3deg); }
+  @keyframes catGlow {
+    0%,100% { box-shadow: 0 0 0 6px rgba(232,184,75,0.12), 0 0 30px rgba(232,184,75,0.35), 0 0 60px rgba(232,184,75,0.15); }
+    50%      { box-shadow: 0 0 0 8px rgba(232,184,75,0.2),  0 0 50px rgba(232,184,75,0.55), 0 0 90px rgba(232,184,75,0.25); }
+  }
+  .cat-bubble {
+    background: rgba(232,184,75,0.12);
+    border: 1px solid rgba(232,184,75,0.35);
+    border-radius: 100px;
+    padding: 0.3rem 1rem;
+    font-size: 0.8rem;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    animation: bobble 2s ease-in-out infinite;
+  }
+  @keyframes bobble {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  .cat-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(232,184,75,0.4);
+  }
+
+  /* ── EXTRA BODY SHIMMER OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 30% 80% at 0% 50%, rgba(232,184,75,0.04) 0%, transparent 100%),
+      radial-gradient(ellipse 30% 80% at 100% 50%, rgba(232,184,75,0.04) 0%, transparent 100%),
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(232,184,75,0.05) 0%, transparent 100%);
+  }
+
+  /* Enhance number grid hover shimmer */
+  .num-btn:hover:not(.disabled) {
+    background: rgba(232,184,75,0.08);
+    box-shadow: 0 0 12px rgba(232,184,75,0.25), inset 0 0 6px rgba(232,184,75,0.08);
+  }
+
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(232,184,75,0.2); border-radius: 3px; }
+
+  /* Winner announcement section */
+  .current-draw-card {
+    background: linear-gradient(135deg, rgba(0,229,160,0.05), rgba(74,158,255,0.05));
+    border: 1px solid rgba(0,229,160,0.25);
+    border-radius: 18px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  .current-draw-title {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    color: var(--emerald);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .current-draw-nums {
+    display: flex; justify-content: center; gap: 10px;
+    margin-bottom: 1rem;
+  }
+  .locked-indicator {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+  .locked-indicator span { color: var(--blue); }
+
+  /* Confetti particle */
+  .confetti {
+    position: fixed;
+    width: 8px; height: 8px;
+    pointer-events: none;
+    z-index: 1000;
+    border-radius: 2px;
+    animation: confettiFall 2s forwards;
+  }
+  @keyframes confettiFall {
+    0% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(400px) rotate(720deg); }
+  }
+
+  /* Glow ring for hero */
+  .hero-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,184,75,0.04) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  /* Range value display */
+  .range-row { display: flex; align-items: center; gap: 1rem; }
+  .range-row input[type="range"] { flex: 1; }
+  .range-val {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--gold);
+    min-width: 2.5rem;
+    text-align: center;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<!-- STARFIELD -->
+<canvas id="starfield"></canvas>
+
+<!-- ADMIN TRIGGER (invisible bottom-right corner) -->
+<div id="admin-trigger" onclick="openAdminGate()" title="⬛">◈</div>
+
+<!-- MAIN PAGE -->
+<div class="page">
+
+  <!-- NAV -->
+  <nav>
+    <div>
+      <div class="nav-logo">NEXUS</div>
+      <div class="nav-tagline">The Skill Oracle</div>
+    </div>
+    <div class="nav-links">
+      <a onclick="scrollTo('predict')">Predict</a>
+      <a onclick="scrollTo('my-picks')">My Picks</a>
+      <a onclick="scrollTo('winners')">Winners</a>
+      <a onclick="scrollTo('how')">How It Works</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero" style="position:relative;">
+    <div class="hero-ring"></div>
+    <div class="hero-eyebrow">Weekly Skill Draw · Season 1</div>
+    <h1 class="hero-title">DECODE<br>THE ORACLE</h1>
+    <p class="hero-sub">Five numbers. One algorithm. <span>Pure skill.</span> Calibrate your intuition and lock in your prediction before the draw.</p>
+    <div class="draw-banner">
+      <div class="draw-dot"></div>
+      <span id="draw-countdown">Next draw window open</span>
+    </div>
+
+    <!-- CAT MASCOT -->
+    <div class="cat-wrap">
+      <div class="cat-bubble">The Oracle is watching 👀</div>
+      <img
+        src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcHhxc3d6b2RsaTNncGZlN3c2bzFlbXlhejNkcXJiZHJ4bnF1YXBodiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ICOgUNjpvO0PC/giphy.gif"
+        alt="Oracle cat"
+        class="cat-gif"
+        onerror="this.src='https://media.giphy.com/media/BzyTuYCmvSORqs1ABM/giphy.gif'"
+      >
+      <div class="cat-label">NEXUS ORACLE CAT · CERTIFIED PREDICTOR</div>
+    </div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="stat-predictions">0</div>
+      <div class="stat-label">Predictions Made</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-draws">0</div>
+      <div class="stat-label">Draws Completed</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">5</div>
+      <div class="stat-label">Numbers to Match</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">49</div>
+      <div class="stat-label">Number Pool</div>
+    </div>
+  </div>
+
+  <!-- CURRENT WINNING NUMBERS (if revealed) -->
+  <div class="section" id="current-result-section" style="display:none; padding-top:0;">
+    <div class="current-draw-card">
+      <div class="current-draw-title">🏆 Current Draw Result — Winning Numbers</div>
+      <div class="current-draw-nums" id="current-win-nums"></div>
+      <div class="locked-indicator">Draw ID: <span id="current-draw-id">—</span></div>
+    </div>
+  </div>
+
+  <!-- PREDICT SECTION -->
+  <div class="section" id="predict" style="padding-top: 0;">
+    <div class="section-title">Your Prediction</div>
+    <div class="section-heading">Choose Your Five Numbers</div>
+
+    <div class="picker-card">
+      <!-- Selected balls -->
+      <div class="selected-display">
+        <div class="sel-ball" id="ball-0"><span class="ball-num">?</span></div>
+        <div class="sel-ball" id="ball-1"><span class="ball-num">?</span></div>
+        <div class="sel-ball" id="ball-2"><span class="ball-num">?</span></div>
+        <div class="sel-ball" id="ball-3"><span class="ball-num">?</span></div>
+        <div class="sel-ball" id="ball-4"><span class="ball-num">?</span></div>
+      </div>
+
+      <div class="picker-instruction">
+        Tap to select <strong>5 numbers</strong> from the grid below — tap again to deselect
+      </div>
+
+      <!-- Number grid 1–49 -->
+      <div class="number-grid" id="number-grid"></div>
+
+      <!-- Name + Submit -->
+      <div class="input-row">
+        <div class="input-group">
+          <label>Your Alias / Name</label>
+          <input type="text" id="user-name" placeholder="e.g. StargazerX" maxlength="24">
+        </div>
+        <button class="btn-submit" id="submit-btn" onclick="submitPrediction()" disabled>
+          Lock In Prediction
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY PICKS -->
+  <div class="section" id="my-picks" style="padding-top:0;">
+    <div class="section-title">Prediction History</div>
+    <div class="section-heading">My Picks</div>
+    <div id="predictions-list" class="predictions-list">
+      <div class="empty-state">
+        <div class="empty-icon">🔮</div>
+        <div>No predictions yet. Make your first pick above.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WINNERS HALL -->
+  <div class="section" id="winners" style="padding-top:0;">
+    <div class="section-title">Hall of Precision</div>
+    <div class="section-heading">Past Winners</div>
+    <div id="winners-list">
+      <div class="no-winners">No draws declared yet. Check back after the next draw window.</div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="section" id="how" style="padding-top:0;">
+    <div class="section-title">The Process</div>
+    <div class="section-heading">How Nexus Works</div>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-num">01</div>
+        <div class="how-title">The Algorithm</div>
+        <div class="how-desc">Five numbers are generated each week by a proprietary algorithm. Parameters are set before the prediction window opens — no one can change them after.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">02</div>
+        <div class="how-title">Your Prediction</div>
+        <div class="how-desc">Select your 5 numbers from 1–49. Your unique NEXUS ID is generated upon submission — your immutable record of participation.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">03</div>
+        <div class="how-title">The Reveal</div>
+        <div class="how-desc">After the prediction window closes, the oracle numbers are revealed. The participant whose prediction matches wins the round.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">04</div>
+        <div class="how-title">Skill, Not Luck</div>
+        <div class="how-desc">The algorithm is deterministic and pattern-based. Those with the sharpest intuition and analytical mind find the signal in the noise.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>© NEXUS Skill Oracle · All Predictions Are Final · Trust the Algorithm</footer>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div class="toast" id="toast">
+  <div class="toast-icon">✦</div>
+  <div>
+    <div class="toast-title">Prediction Locked</div>
+    <div class="toast-body">Your NEXUS ID:</div>
+    <div class="toast-id" id="toast-id">—</div>
+  </div>
+</div>
+
+<!-- PASSWORD GATE MODAL -->
+<div class="modal-overlay" id="pwd-overlay">
+  <div class="modal" id="pwd-modal">
+    <button class="modal-close" onclick="closePwdModal()">✕</button>
+    <div class="modal-title">⬡ Oracle Chamber</div>
+    <div class="modal-sub">Administrator access required</div>
+    <div id="admin-login-overlay">
+      <div class="field-group">
+        <label>Access Code</label>
+        <div class="pwd-input-wrap">
+          <input type="password" id="admin-pwd" placeholder="Enter access code..." onkeydown="if(event.key==='Enter')checkPassword()">
+          <button class="pwd-toggle" onclick="togglePwd()">👁</button>
+        </div>
+      </div>
+      <button class="btn-admin primary" onclick="checkPassword()">Unlock Oracle Chamber</button>
+      <div id="pwd-error" style="color:var(--red);font-size:0.8rem;text-align:center;display:none;">Incorrect access code. Try again.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL MODAL -->
+<div class="modal-overlay" id="admin-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAdmin()">✕</button>
+    <div class="modal-title">⬡ Oracle Chamber</div>
+    <div class="modal-sub">Admin Control Panel — Invisible to participants</div>
+
+    <!-- ALGORITHM CONFIG -->
+    <div class="admin-section">
+      <div class="admin-section-title">⚙ Algorithm Parameters</div>
+      <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;">These values feed the deterministic number generator. Set them before opening the prediction window.</p>
+
+      <div class="field-group">
+        <label>Prime Seed (1–997)</label>
+        <div class="range-row">
+          <input type="range" id="param-prime" min="1" max="997" value="47" oninput="updateParamDisplay(this,'prime-val');recompute()">
+          <span class="range-val" id="prime-val">47</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Offset Multiplier (1–99)</label>
+        <div class="range-row">
+          <input type="range" id="param-offset" min="1" max="99" value="13" oninput="updateParamDisplay(this,'offset-val');recompute()">
+          <span class="range-val" id="offset-val">13</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Cycle Depth (1–50)</label>
+        <div class="range-row">
+          <input type="range" id="param-depth" min="1" max="50" value="7" oninput="updateParamDisplay(this,'depth-val');recompute()">
+          <span class="range-val" id="depth-val">7</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Draw Label (e.g. "Week 4 Draw")</label>
+        <input type="text" id="param-label" placeholder="Week 1 Draw" value="Week 1 Draw">
+      </div>
+
+      <div class="field-group">
+        <label>Computed Oracle Numbers (read-only)</label>
+        <div class="computed-display" id="admin-computed">
+          <span style="color:var(--text-dim);font-size:0.8rem;">Adjust sliders above to compute</span>
+        </div>
+      </div>
+      <button class="btn-admin primary" onclick="saveAlgorithm()">Save Algorithm Config</button>
+    </div>
+
+    <!-- DECLARE WINNER -->
+    <div class="admin-section">
+      <div class="admin-section-title">🏆 Declare Draw & Reveal Winner</div>
+      <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;">This publishes the winning numbers and winner ID publicly. Irreversible once declared.</p>
+      <div class="field-group">
+        <label>Winner's NEXUS ID (optional — leave blank if no exact match)</label>
+        <input type="text" id="winner-id-input" placeholder="e.g. NX-A3F2B1">
+      </div>
+      <button class="btn-admin success" onclick="declareWinner()">Declare Winner & Publish Numbers</button>
+    </div>
+
+    <!-- ALL SUBMISSIONS -->
+    <div class="admin-section">
+      <div class="admin-section-title">📋 All Submissions</div>
+      <div class="table-wrap">
+        <table class="submissions-table" id="admin-submissions-table">
+          <thead><tr>
+            <th>NEXUS ID</th>
+            <th>Alias</th>
+            <th>Numbers</th>
+            <th>Date</th>
+          </tr></thead>
+          <tbody id="admin-submissions-body">
+            <tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:1rem;">No submissions yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DANGER -->
+    <div class="admin-section">
+      <div class="admin-section-title">⚠ Danger Zone</div>
+      <button class="btn-admin danger" onclick="resetAll()">Reset All Data (Clear Everything)</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STARFIELD + GOLD RAIN + SPARKLES
+// ═══════════════════════════════════════════════
+(function(){
+  const c = document.getElementById('starfield');
+  const ctx = c.getContext('2d');
+  let W, H, stars = [], sparkles = [], rainL = [], rainR = [];
+
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; initAll(); }
+
+  // Background twinkling stars
+  function initStars(){
+    stars = [];
+    const n = Math.floor((W * H) / 3200);
+    for(let i=0;i<n;i++) stars.push({
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.4+0.2,
+      o: Math.random()*0.7+0.1,
+      s: (Math.random()-0.5)*0.06,
+      t: Math.random()*Math.PI*2,
+      speed: 0.006 + Math.random()*0.012
+    });
+  }
+
+  // Gold sparkle bursts (4-point star shapes, stationary, twinkling)
+  function initSparkles(){
+    sparkles = [];
+    const n = Math.floor((W * H) / 18000) + 12;
+    for(let i=0;i<n;i++) sparkles.push({
+      x: Math.random()*W, y: Math.random()*H,
+      size: Math.random()*6+3,
+      t: Math.random()*Math.PI*2,
+      speed: 0.02 + Math.random()*0.03,
+      hue: 38 + (Math.random()-0.5)*12
+    });
+  }
+
+  // Gold rain streams — left side
+  function initRainL(){
+    rainL = [];
+    const count = 18;
+    for(let i=0;i<count;i++) rainL.push({
+      x: Math.random() * W * 0.28,
+      y: Math.random() * H,
+      len: 18 + Math.random()*28,
+      speed: 0.6 + Math.random()*1.4,
+      o: 0.15 + Math.random()*0.35,
+      size: 0.8 + Math.random()*1.2,
+      drift: (Math.random()-0.5)*0.3
+    });
+  }
+
+  // Gold rain streams — right side
+  function initRainR(){
+    rainR = [];
+    const count = 18;
+    for(let i=0;i<count;i++) rainR.push({
+      x: W * 0.72 + Math.random() * W * 0.28,
+      y: Math.random() * H,
+      len: 18 + Math.random()*28,
+      speed: 0.6 + Math.random()*1.4,
+      o: 0.15 + Math.random()*0.35,
+      size: 0.8 + Math.random()*1.2,
+      drift: (Math.random()-0.5)*0.3
+    });
+  }
+
+  function initAll(){ initStars(); initSparkles(); initRainL(); initRainR(); }
+
+  // Draw a 4-pointed star
+  function drawStar4(x, y, size, alpha, hue){
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `hsl(${hue}, 90%, 72%)`;
+    ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
+    ctx.shadowBlur = size * 3;
+    ctx.beginPath();
+    const pts = 4;
+    for(let p=0;p<pts*2;p++){
+      const angle = (p * Math.PI) / pts - Math.PI/2;
+      const r = p%2===0 ? size : size*0.35;
+      const px = x + Math.cos(angle)*r;
+      const py = y + Math.sin(angle)*r;
+      p===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // Draw a gold rain streak with glow
+  function drawStreak(x, y, len, alpha, size){
+    const grad = ctx.createLinearGradient(x, y-len, x, y);
+    grad.addColorStop(0, `rgba(232,184,75,0)`);
+    grad.addColorStop(0.5, `rgba(255,220,100,${alpha})`);
+    grad.addColorStop(1, `rgba(255,240,160,${alpha*0.6})`);
+    ctx.save();
+    ctx.shadowColor = 'rgba(232,184,75,0.6)';
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = size;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y-len);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    // Small dot at bottom
+    ctx.beginPath();
+    ctx.arc(x, y, size*1.2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,240,160,${alpha})`;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // Stars
+    stars.forEach(s=>{
+      s.t += s.speed;
+      const o = Math.max(0, s.o + Math.sin(s.t)*0.25);
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,230,150,0.5)';
+      ctx.shadowBlur = s.r > 0.9 ? 4 : 0;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,235,180,${o})`;
+      ctx.fill();
+      ctx.restore();
+      s.x += s.s;
+      if(s.x < 0) s.x = W;
+      if(s.x > W) s.x = 0;
+    });
+
+    // Sparkles
+    sparkles.forEach(sp=>{
+      sp.t += sp.speed;
+      const pulse = (Math.sin(sp.t)*0.5+0.5);
+      const alpha = 0.1 + pulse*0.75;
+      const size = sp.size * (0.5 + pulse*0.6);
+      if(alpha > 0.08) drawStar4(sp.x, sp.y, size, alpha, sp.hue);
+    });
+
+    // Left rain
+    rainL.forEach(r=>{
+      r.y += r.speed;
+      r.x += r.drift;
+      if(r.y > H + r.len){ r.y = -r.len; r.x = Math.random() * W * 0.28; }
+      if(r.x < 0 || r.x > W * 0.32){ r.x = Math.random() * W * 0.28; }
+      drawStreak(r.x, r.y, r.len, r.o, r.size);
+    });
+
+    // Right rain
+    rainR.forEach(r=>{
+      r.y += r.speed;
+      r.x += r.drift;
+      if(r.y > H + r.len){ r.y = -r.len; r.x = W * 0.72 + Math.random() * W * 0.28; }
+      if(r.x < W * 0.68 || r.x > W){ r.x = W * 0.72 + Math.random() * W * 0.28; }
+      drawStreak(r.x, r.y, r.len, r.o, r.size);
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+})();
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const KEY_PREDS  = 'nexus_predictions';
+const KEY_DRAWS  = 'nexus_draws';
+const KEY_CONFIG = 'nexus_admin_config';
+const KEY_PWD    = 'nexus_pwd';
+const DEFAULT_PWD = 'oracle2025';
+
+let selected = [];
+
+function load(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
+function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+function getPreds(){ return load(KEY_PREDS, []); }
+function getDraws(){ return load(KEY_DRAWS, []); }
+function getConfig(){ return load(KEY_CONFIG, { prime:47, offset:13, depth:7, label:'Week 1 Draw', computed:[], revealed:false }); }
+
+// ═══════════════════════════════════════════════
+//  ALGORITHM
+// ═══════════════════════════════════════════════
+function computeOracle(prime, offset, depth){
+  const results = [];
+  const seen = new Set();
+  let state = (prime * 37 + offset * 13) % 997;
+  let iter = 0;
+  while(results.length < 5 && iter < 2000){
+    state = (state * prime + offset * depth + iter*7) % 989;
+    const num = (state % 49) + 1;
+    if(!seen.has(num)){ seen.add(num); results.push(num); }
+    iter++;
+  }
+  return results.sort((a,b)=>a-b);
+}
+
+// ═══════════════════════════════════════════════
+//  NUMBER GRID
+// ═══════════════════════════════════════════════
+function buildGrid(){
+  const grid = document.getElementById('number-grid');
+  grid.innerHTML = '';
+  for(let i=1;i<=49;i++){
+    const btn = document.createElement('button');
+    btn.className = 'num-btn';
+    btn.textContent = i;
+    btn.dataset.n = i;
+    btn.onclick = () => toggleNum(i, btn);
+    grid.appendChild(btn);
+  }
+}
+
+function toggleNum(n, btn){
+  if(selected.includes(n)){
+    selected = selected.filter(x=>x!==n);
+    btn.classList.remove('selected');
+  } else {
+    if(selected.length >= 5) return;
+    selected.push(n);
+    btn.classList.add('selected');
+  }
+  updateBalls();
+  updateSubmitBtn();
+}
+
+function updateBalls(){
+  const sorted = [...selected].sort((a,b)=>a-b);
+  for(let i=0;i<5;i++){
+    const ball = document.getElementById('ball-'+i);
+    const span = ball.querySelector('.ball-num');
+    if(sorted[i] !== undefined){
+      span.textContent = sorted[i];
+      ball.classList.add('filled');
+    } else {
+      span.textContent = '?';
+      ball.classList.remove('filled');
+    }
+  }
+}
+
+function updateSubmitBtn(){
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = selected.length !== 5;
+}
+
+// ═══════════════════════════════════════════════
+//  SUBMISSION
+// ═══════════════════════════════════════════════
+function generateId(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = 'NX-';
+  for(let i=0;i<6;i++) id += chars[Math.floor(Math.random()*chars.length)];
+  return id;
+}
+
+function submitPrediction(){
+  const name = document.getElementById('user-name').value.trim() || 'Anonymous';
+  if(selected.length !== 5){ alert('Please select exactly 5 numbers.'); return; }
+
+  const id = generateId();
+  const pred = {
+    id,
+    name,
+    numbers: [...selected].sort((a,b)=>a-b),
+    timestamp: new Date().toISOString()
+  };
+
+  const preds = getPreds();
+  preds.push(pred);
+  save(KEY_PREDS, preds);
+
+  // Show toast
+  showToast(id);
+
+  // Reset
+  selected = [];
+  updateBalls();
+  updateSubmitBtn();
+  document.querySelectorAll('.num-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('user-name').value = '';
+
+  // Confetti
+  spawnConfetti();
+
+  // Refresh UI
+  renderPredictions();
+  updateStats();
+}
+
+function showToast(id){
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-id').textContent = id;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 4500);
+}
+
+function spawnConfetti(){
+  const colors = ['#e8b84b','#4a9eff','#00e5a0','#ff4a6e','#fff'];
+  for(let i=0;i<30;i++){
+    const d = document.createElement('div');
+    d.className = 'confetti';
+    d.style.cssText = `
+      left:${Math.random()*100}vw;
+      top:${Math.random()*40+30}vh;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-delay:${Math.random()*0.5}s;
+      animation-duration:${1.5+Math.random()*1}s;
+    `;
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(), 3000);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER PREDICTIONS
+// ═══════════════════════════════════════════════
+function renderPredictions(){
+  const preds = getPreds();
+  const draws = getDraws();
+  const lastDraw = draws.length ? draws[draws.length-1] : null;
+  const winnerSet = lastDraw ? new Set(lastDraw.numbers) : null;
+
+  const el = document.getElementById('predictions-list');
+  if(!preds.length){
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔮</div><div>No predictions yet. Make your first pick above.</div></div>`;
+    return;
+  }
+
+  el.innerHTML = [...preds].reverse().map(p=>{
+    const isWinner = lastDraw && lastDraw.winner_id === p.id;
+    const matchCount = winnerSet ? p.numbers.filter(n=>winnerSet.has(n)).length : null;
+    const numsHtml = p.numbers.map(n=>{
+      const m = winnerSet && winnerSet.has(n) ? ' match' : '';
+      return `<div class="pred-ball${m}">${n}</div>`;
+    }).join('');
+    const matchHtml = matchCount !== null
+      ? `<div class="match-count">Matched: <span>${matchCount}/5</span></div>`
+      : '';
+    const dateStr = new Date(p.timestamp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    return `
+      <div class="pred-card${isWinner?' winner':''}">
+        <div class="pred-info">
+          <div class="pred-name">${escHtml(p.name)}</div>
+          <div class="pred-id">${p.id}</div>
+          <div class="pred-date">${dateStr}</div>
+        </div>
+        <div class="pred-nums">${numsHtml}</div>
+        ${matchHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER WINNERS
+// ═══════════════════════════════════════════════
+function renderWinners(){
+  const draws = getDraws();
+  const el = document.getElementById('winners-list');
+  if(!draws.length){
+    el.innerHTML = `<div class="no-winners">No draws declared yet. Check back after the next draw window.</div>`;
+    return;
+  }
+  el.innerHTML = [...draws].reverse().map(d=>{
+    const numsHtml = d.numbers.map(n=>`<div class="winner-ball">${n}</div>`).join('');
+    const dateStr = new Date(d.declared_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    return `
+      <div class="winner-card">
+        <div class="winner-draw-label">✦ ${escHtml(d.label)}</div>
+        <div class="winner-nums">${numsHtml}</div>
+        <div class="winner-meta">
+          <div class="winner-meta-item">
+            <label>Winner ID</label>
+            <value class="id">${d.winner_id ? escHtml(d.winner_id) : '— No exact match'}</value>
+          </div>
+          <div class="winner-meta-item">
+            <label>Declared</label>
+            <value>${dateStr}</value>
+          </div>
+          <div class="winner-meta-item">
+            <label>Draw #</label>
+            <value>${draws.indexOf(d)+1}</value>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Show current result banner
+  const lastDraw = draws[draws.length-1];
+  if(lastDraw){
+    const section = document.getElementById('current-result-section');
+    section.style.display = 'block';
+    const numsEl = document.getElementById('current-win-nums');
+    numsEl.innerHTML = lastDraw.numbers.map(n=>`<div class="winner-ball">${n}</div>`).join('');
+    document.getElementById('current-draw-id').textContent = lastDraw.label;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════
+function updateStats(){
+  document.getElementById('stat-predictions').textContent = getPreds().length;
+  document.getElementById('stat-draws').textContent = getDraws().length;
+}
+
+// ═══════════════════════════════════════════════
+//  ADMIN — PASSWORD
+// ═══════════════════════════════════════════════
+function openAdminGate(){
+  document.getElementById('pwd-overlay').classList.add('open');
+  document.getElementById('admin-pwd').value = '';
+  document.getElementById('pwd-error').style.display = 'none';
+  setTimeout(()=>document.getElementById('admin-pwd').focus(), 300);
+}
+
+function closePwdModal(){
+  document.getElementById('pwd-overlay').classList.remove('open');
+}
+
+function togglePwd(){
+  const inp = document.getElementById('admin-pwd');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function checkPassword(){
+  const entered = document.getElementById('admin-pwd').value;
+  const stored = localStorage.getItem('nexus_admin_pwd') || DEFAULT_PWD;
+  if(entered === stored){
+    closePwdModal();
+    openAdmin();
+  } else {
+    document.getElementById('pwd-error').style.display = 'block';
+    document.getElementById('admin-pwd').value = '';
+    document.getElementById('admin-pwd').focus();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  ADMIN PANEL
+// ═══════════════════════════════════════════════
+function openAdmin(){
+  loadAdminConfig();
+  loadAdminSubmissions();
+  document.getElementById('admin-overlay').classList.add('open');
+}
+
+function closeAdmin(){
+  document.getElementById('admin-overlay').classList.remove('open');
+}
+
+function updateParamDisplay(el, valId){
+  document.getElementById(valId).textContent = el.value;
+}
+
+function recompute(){
+  const prime = parseInt(document.getElementById('param-prime').value);
+  const offset = parseInt(document.getElementById('param-offset').value);
+  const depth = parseInt(document.getElementById('param-depth').value);
+  const nums = computeOracle(prime, offset, depth);
+  const el = document.getElementById('admin-computed');
+  el.innerHTML = nums.map(n=>`<div class="computed-ball">${n}</div>`).join('');
+}
+
+function loadAdminConfig(){
+  const cfg = getConfig();
+  document.getElementById('param-prime').value = cfg.prime || 47;
+  document.getElementById('param-offset').value = cfg.offset || 13;
+  document.getElementById('param-depth').value = cfg.depth || 7;
+  document.getElementById('param-label').value = cfg.label || 'Week 1 Draw';
+  document.getElementById('prime-val').textContent = cfg.prime || 47;
+  document.getElementById('offset-val').textContent = cfg.offset || 13;
+  document.getElementById('depth-val').textContent = cfg.depth || 7;
+  recompute();
+}
+
+function saveAlgorithm(){
+  const prime = parseInt(document.getElementById('param-prime').value);
+  const offset = parseInt(document.getElementById('param-offset').value);
+  const depth = parseInt(document.getElementById('param-depth').value);
+  const label = document.getElementById('param-label').value || 'Week 1 Draw';
+  const computed = computeOracle(prime, offset, depth);
+  save(KEY_CONFIG, { prime, offset, depth, label, computed, revealed: false });
+  flashBtn('Algorithm config saved! ✓', 'primary');
+}
+
+function declareWinner(){
+  const cfg = getConfig();
+  if(!cfg.computed || !cfg.computed.length){
+    alert('Please save an algorithm config first.');
+    return;
+  }
+  const winnerId = document.getElementById('winner-id-input').value.trim() || null;
+  if(!confirm(`Declare draw "${cfg.label}" with numbers [${cfg.computed.join(', ')}]? This will be publicly visible.`)) return;
+
+  const draws = getDraws();
+  draws.push({
+    label: cfg.label,
+    numbers: cfg.computed,
+    winner_id: winnerId,
+    declared_at: new Date().toISOString()
+  });
+  save(KEY_DRAWS, draws);
+
+  renderWinners();
+  updateStats();
+  renderPredictions();
+  closeAdmin();
+  spawnConfetti();
+}
+
+function loadAdminSubmissions(){
+  const preds = getPreds();
+  const cfg = getConfig();
+  const winSet = cfg.computed ? new Set(cfg.computed) : null;
+  const tbody = document.getElementById('admin-submissions-body');
+  if(!preds.length){
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:1rem;">No submissions yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = [...preds].reverse().map(p=>{
+    const numsHtml = p.numbers.map(n=>{
+      const m = winSet && winSet.has(n) ? ' match' : '';
+      return `<div class="tbl-ball${m}">${n}</div>`;
+    }).join('');
+    const date = new Date(p.timestamp).toLocaleDateString();
+    return `<tr>
+      <td class="tbl-id">${p.id}</td>
+      <td>${escHtml(p.name)}</td>
+      <td><div class="tbl-nums">${numsHtml}</div></td>
+      <td>${date}</td>
+    </tr>`;
+  }).join('');
+}
+
+function resetAll(){
+  if(!confirm('This will delete ALL predictions and draw history. Are you absolutely sure?')) return;
+  if(!confirm('Final confirmation: wipe everything?')) return;
+  localStorage.removeItem(KEY_PREDS);
+  localStorage.removeItem(KEY_DRAWS);
+  localStorage.removeItem(KEY_CONFIG);
+  renderPredictions();
+  renderWinners();
+  updateStats();
+  document.getElementById('current-result-section').style.display = 'none';
+  closeAdmin();
+  alert('All data cleared.');
+}
+
+function flashBtn(msg, type){
+  const btns = document.querySelectorAll('.btn-admin.primary');
+  btns.forEach(b=>{ if(b.textContent.includes('Save')) { const orig = b.textContent; b.textContent = msg; setTimeout(()=>b.textContent = orig, 2000); }});
+}
+
+// ═══════════════════════════════════════════════
+//  SCROLL NAV
+// ═══════════════════════════════════════════════
+function scrollTo(id){
+  document.getElementById(id)?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// Close modal on overlay click
+document.getElementById('pwd-overlay').addEventListener('click', function(e){
+  if(e.target === this) closePwdModal();
+});
+document.getElementById('admin-overlay').addEventListener('click', function(e){
+  if(e.target === this) closeAdmin();
+});
+
+// ═══════════════════════════════════════════════
+//  UTILITY
+// ═══════════════════════════════════════════════
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+buildGrid();
+renderPredictions();
+renderWinners();
+updateStats();
+recompute();
+</script>
+</body>
+</html>
